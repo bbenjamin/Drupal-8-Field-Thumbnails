@@ -1,0 +1,8 @@
+
+field_thumbnail.field_thumbnail_controller_fieldThumbMake:
+  path: '/field_thumb/img/{fid}'
+  defaults:
+    _controller: '\Drupal\field_thumbnail\Controller\FieldThumbnailController::fieldThumbMake'
+    _title_callback: '\Drupal\field_thumbnail\Controller\FieldThumbnailController::title'
+  requirements:
+    _permission: 'access content'
