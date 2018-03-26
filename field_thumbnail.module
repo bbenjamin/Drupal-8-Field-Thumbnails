@@ -8,6 +8,7 @@
 use Drupal\Core\Routing\RouteMatchInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\field\Entity\FieldConfig;
+use Drupal\file\Entity\File;
 
 /**
  * Implements hook_help().
@@ -26,30 +27,34 @@ function field_thumbnail_help($route_name, RouteMatchInterface $route_match) {
 }
 
 /**
- * implements hook_preprocess_form_element().
+ * Implements hook_preprocess_form_element().
  */
 function field_thumbnail_preprocess_form_element(&$variables) {
-  if(!empty($variables['element']['#thumbnailcontents'])) {
-    // Pass the thumbnail field ID to the label render array so the modal link can be placed immediately after the label
+  if (!empty($variables['element']['#thumbnailcontents'])) {
+    // Pass the thumbnail field ID to the label render array so the modal
+    // link can be placed immediately after the label.
     $variables['label']['#thumbnailcontents'] = $variables['element']['#thumbnailcontents'];
   }
 }
 
 /**
  * Implements hook_field_widget_form_alter().
+ *
+ * @inheritdoc
  */
-function field_thumbnail_field_widget_form_alter(&$element, \Drupal\Core\Form\FormStateInterface $form_state, $context) {
-  if(!empty($context['items']) && $def = $context['items']->getFieldDefinition()) {
-    if(method_exists($def, 'getThirdPartySetting')) {
+function field_thumbnail_field_widget_form_alter(&$element, FormStateInterface $form_state, $context) {
+  if (!empty($context['items']) && $def = $context['items']->getFieldDefinition()) {
+    if (method_exists($def, 'getThirdPartySetting')) {
       $thumb = $def->getThirdPartySetting('field_thumbnail', 'field_config_thumbnail');
 
-      if($thumb) {
+      if ($thumb) {
         $id = $def->id();
         $element['value']['#thumbnailcontents'] = [
           'fid' => $thumb,
-          'field_config_id' => $id
+          'field_config_id' => $id,
         ];
-        // Some field types require this value directly on the element array instead of element[#value]
+        // Some field types require this value directly on the
+        // element array instead of element[#value].
         $element['#thumbnailcontents'] = $element['value']['#thumbnailcontents'];
       }
     }
@@ -60,32 +65,33 @@ function field_thumbnail_field_widget_form_alter(&$element, \Drupal\Core\Form\Fo
  * Implements hook_preprocess_form_element_label().
  */
 function field_thumbnail_preprocess_form_element_label(&$variables) {
-  if(!empty($variables['element']['#thumbnailcontents'])) {
+  if (!empty($variables['element']['#thumbnailcontents'])) {
     $preview = sprintf('<div>
       <a href="/field_thumb/img/%s" class="use-ajax" data-dialog-type="modal" data-dialog-options=\'{"width":500}\'>
         Preview Field
       </a>
     </div>', $variables['element']['#thumbnailcontents']['field_config_id']);
-    $variables['title']['#markup'] .= $preview ;
+    $variables['title']['#markup'] .= $preview;
   }
 }
 
-/**
- * Submit handler for field config that checks for thumbnail fields and saves/removes accordingly
+/*
+ * Submit handler for field config that checks for thumbnail fields.
  */
-function field_thumbnail_field_config_entity_save($entity_type,  FieldConfig $entity, &$form, FormStateInterface $form_state){
-  // Make thumbnail image non-temp
-  if($image = $form_state->getValue('field_config_thumbnail')){
-    if(!empty($image['fids'][0]) && $file = Drupal\file\Entity\File::load( $image['fids'][0] )){
+function field_thumbnail_field_config_entity_save($entity_type, FieldConfig $entity, &$form, FormStateInterface $form_state) {
+  // Make thumbnail image non-temp.
+  if ($image = $form_state->getValue('field_config_thumbnail')) {
+    if (!empty($image['fids'][0]) && $file = File::load($image['fids'][0])) {
       $file->setPermanent();
       $file->save();
     }
   };
 
-  foreach(['field_config_thumbnail', 'field_config_thumbnail_description'] as $setting) {
+  foreach (['field_config_thumbnail', 'field_config_thumbnail_description'] as $setting) {
     if ($form_state->getValue($setting)) {
       $entity->setThirdPartySetting('field_thumbnail', $setting, $form_state->getValue($setting));
-    }else{
+    }
+    else {
       $entity->unsetThirdPartySetting('field_thumbnail', $setting);
     }
   }
@@ -93,7 +99,8 @@ function field_thumbnail_field_config_entity_save($entity_type,  FieldConfig $en
 
 /**
  * Implements hook_form_FORM_ID_alter().
- * Add field_thumbnail fields to the field config form
+ *
+ * Add field_thumbnail fields to the field config form.
  */
 function field_thumbnail_form_field_config_edit_form_alter(&$form, FormStateInterface $form_state) {
   $field_config = $form_state->getFormObject()->getEntity();
@@ -103,7 +110,7 @@ function field_thumbnail_form_field_config_edit_form_alter(&$form, FormStateInte
   $form['field_thumbnail_group'] = [
     '#type' => 'fieldset',
     '#title' => t('Field Thumbnail'),
-    '#description' => t('Add image and help text to help explain how field is rendered on page')
+    '#description' => t('Add image and help text to help explain how field is rendered on page'),
   ];
 
   $form['field_thumbnail_group']['field_config_thumbnail'] = [
@@ -117,7 +124,7 @@ function field_thumbnail_form_field_config_edit_form_alter(&$form, FormStateInte
     '#preview_image_style' => 'medium',
     '#upload_location' => 'public://field_thumbnail',
     '#required' => FALSE,
-    '#default_value' => $thumb_fid
+    '#default_value' => $thumb_fid,
   ];
 
   $form['field_thumbnail_group']['field_config_thumbnail_description'] = [
@@ -125,7 +132,7 @@ function field_thumbnail_form_field_config_edit_form_alter(&$form, FormStateInte
     '#title' => t('Description'),
     '#size' => 120,
     '#maxlength' => 256,
-    '#default_value' => $thumb_desc
+    '#default_value' => $thumb_desc,
   ];
 
   $form['#entity_builders'][] = 'field_thumbnail_field_config_entity_save';
